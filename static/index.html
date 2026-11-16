@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>影刀社区自动回答系统</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">刀</div>
+    <div>
+      <div class="brand-title">影刀社区自动回答系统</div>
+      <div class="brand-sub">采集 → AI 生成 → 质量闸门 → 人工确认发送</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="chips" id="chips"></div>
+    <button class="btn primary" id="btnCollect">采集最新问题</button>
+    <button class="btn ghost" id="btnSettings">设置</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-view="pending">待处理</button>
+      <button class="tab" data-view="noanswer">无人回答</button>
+      <button class="tab" data-view="drafted">已生成</button>
+      <button class="tab" data-view="sent">已发送</button>
+      <button class="tab" data-view="all">全部</button>
+    </div>
+    <div class="filters">
+      <select id="filterSolved" class="mini-select" title="按解决状态过滤">
+        <option value="all">全部状态</option>
+        <option value="unsolved">只看未解决</option>
+        <option value="solved">只看已解决</option>
+      </select>
+      <select id="filterSort" class="mini-select" title="按发布时间排序">
+        <option value="new">最新在前</option>
+        <option value="old">最旧在前</option>
+      </select>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="sidebar-foot">
+      <span id="footLeft">未加载</span>
+      <span id="footRight"></span>
+    </div>
+  </aside>
+
+  <section class="work" id="work"></section>
+</main>
+
+<div class="mask" id="mask"></div>
+
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3>系统设置</h3>
+    <button class="btn ghost sm" id="btnCloseDrawer">关闭</button>
+  </div>
+  <div class="drawer-body">
+    <div class="section-label">大模型（OpenAI 兼容接口）</div>
+    <div class="field">
+      <label>接口地址 Base URL</label>
+      <input type="text" id="cfgBaseUrl" placeholder="https://api.deepseek.com/v1">
+      <div class="tip">任意 OpenAI 兼容网关都可：DeepSeek、通义、Kimi、智谱、自建中转等。</div>
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="cfgApiKey" placeholder="留空则使用演示模式">
+      <div class="tip" id="keyTip">Key 只保存在本机 config.json，不会上传到任何地方。</div>
+    </div>
+    <div class="field">
+      <label>模型 <span class="label-act" id="btnFetchModels">拉取可用模型</span></label>
+      <select id="cfgModelSelect"></select>
+      <input type="text" id="cfgModel" placeholder="手动填写模型名" style="display:none">
+      <div class="tip" id="modelTip">点右上角按钮，会用这个 Key 查询你实际能用的模型</div>
+      <div class="tip"><a href="#" id="toggleManualModel">模型不在列表里？手动填写</a></div>
+    </div>
+    <div class="field">
+      <label>温度 <span class="temp-num" id="tempVal">0.4</span></label>
+      <input type="range" id="cfgTempRange" min="0" max="1" step="0.1" value="0.4">
+      <div class="tip" id="tempTip"></div>
+    </div>
+
+    <div class="section-label">采集接口</div>
+    <div class="field">
+      <label>接口 Base 地址</label>
+      <input type="text" id="cfgApiBase" placeholder="https://api.yingdao.com/api/noauth/v1/sns/forum">
+      <div class="tip">社区只读接口，无需登录。换社区或官方改版后在这里调整，不用改代码。</div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>问题列表路径</label>
+        <input type="text" id="cfgListPath" placeholder="/question/query">
+      </div>
+      <div class="field">
+        <label>问题详情路径</label>
+        <input type="text" id="cfgDetailPath" placeholder="/question/detail">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>回答列表路径</label>
+        <input type="text" id="cfgAnswerPath" placeholder="/answer/query">
+      </div>
+      <div class="field">
+        <label>请求间隔（秒）</label>
+        <input type="text" id="cfgDelay" placeholder="0.25">
+      </div>
+    </div>
+    <div class="field">
+      <label>User-Agent（可留空）</label>
+      <input type="text" id="cfgUa" placeholder="留空则使用内置浏览器 UA">
+    </div>
+    <div class="row" style="margin-bottom:6px">
+      <button class="btn sm" id="btnProbe">测试接口连通性</button>
+      <span id="probeResult" style="font-size:11.5px;color:#64748b"></span>
+    </div>
+
+    <div class="section-label">采集范围</div>
+    <div class="field-row">
+      <div class="field">
+        <label>每次采集页数</label>
+        <input type="text" id="cfgPages" placeholder="2">
+      </div>
+      <div class="field">
+        <label>每页条数</label>
+        <input type="text" id="cfgSize" placeholder="20">
+      </div>
+    </div>
+    <div class="field">
+      <label>社区标签</label>
+      <input type="text" id="cfgTag" placeholder="问答">
+      <div class="tip">留空表示不限标签，抓全社区最新提问。</div>
+    </div>
+
+    
+
+    <div class="section-label">自动发送（一键发到社区）</div>
+    <div class="field">
+      <label>提交接口</label>
+      <input type="text" id="cfgSubmitUrl" placeholder="https://api.yingdao.com/api/v1/sns/forum/answer/save">
+      <div class="tip">已内置影刀社区「发表回答」接口，通常不用改。</div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>认证方式</label>
+        <select id="cfgAuthType">
+          <option value="auto">自动识别（推荐）</option>
+          <option value="cookie">仅 Cookie</option>
+          <option value="bearer">仅 Bearer Token</option>
+          <option value="header">自定义请求头</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>内容格式</label>
+        <select id="cfgContentType">
+          <option value="html">HTML 富文本</option>
+          <option value="text">纯文本</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>认证值（Cookie / Token）</label>
+      <input type="text" id="cfgAuthValue" placeholder="整行粘贴，不用挑是哪一个">
+      <div class="tip">
+        影刀社区的登录态是 Cookie 里那个叫 <code>token</code> 的字段，程序会自动抽出来放进 <code>Authorization: Bearer</code>。你整行粘过来就行。<br>
+        取法：登录社区 → F12 → Network → 随便点一条发往 <code>api.yingdao.com</code> 的请求 → 复制 Request Headers 里 <b>Cookie</b> 那一整行。
+      </div>
+    </div>
+
+    <div class="section-label">高级（可留空）</div>
+    <div class="field">
+      <label>请求体模板 JSON</label>
+      <textarea id="cfgBody" placeholder='{"forumQuestionUuid": "{{question_uuid}}", "content": "{{content_json}}"}'></textarea>
+      <div class="tip">留空则自动用 {"forumQuestionUuid","content"} 提交。占位符：{{question_uuid}}、{{content_json}}。</div>
+    </div>
+    <div class="field">
+      <label>额外请求头 JSON</label>
+      <textarea id="cfgHeaders" placeholder='{"Referer": "https://www.yingdao.com/community/"}'></textarea>
+    </div>
+    <div class="row" style="margin-bottom:6px">
+      <button class="btn sm" id="btnCheckSend">检查发送配置</button>
+      <span id="sendCheck" style="font-size:11.5px;color:#64748b"></span>
+    </div>
+
+    <div class="section-label">提示词</div>
+    <div class="field">
+      <label>生成答案 · System Prompt</label>
+      <textarea id="cfgPromptAnswer"></textarea>
+    </div>
+    <div class="field">
+      <label>质量闸门 · System Prompt</label>
+      <textarea id="cfgPromptGate"></textarea>
+    </div>
+
+    <div class="row end">
+      <button class="btn ghost" id="btnResetPrompt">恢复默认提示词</button>
+      <button class="btn accent" id="btnSaveSettings">保存设置</button>
+    </div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

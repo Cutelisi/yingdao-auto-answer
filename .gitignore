@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# 本地配置：含 API Key 与社区登录凭证，不要提交
+config.json
+
+# 本地数据库：含采集到的社区帖子
+data.db
+data.db-journal
+data.db-wal
+data.db-shm
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

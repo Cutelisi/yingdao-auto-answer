@@ -1,0 +1,34 @@
+{
+  "llm": {
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "",
+    "model": "deepseek-flash",
+    "temperature": 0.4,
+    "timeout": 120
+  },
+  "collect": {
+    "api_base": "https://api.yingdao.com/api/noauth/v1/sns/forum",
+    "list_path": "/question/query",
+    "detail_path": "/question/detail",
+    "answer_path": "/answer/query",
+    "tag": "问答",
+    "pages": 2,
+    "size": 20,
+    "delay": 0.25,
+    "user_agent": ""
+  },
+  "send": {
+    "mode": "manual",
+    "submit_url": "https://api.yingdao.com/api/v1/sns/forum/answer/create",
+    "method": "POST",
+    "auth_type": "auto",
+    "auth_value": "",
+    "headers": {},
+    "body_template": "",
+    "content_type": "html"
+  },
+  "prompt": {
+    "answer_system": "你是影刀RPA社区里一位经验丰富的技术答主，擅长把报错和卡点拆成可执行的排查步骤。\n\n要求：\n1. 先给结论/方向（1-2 句），再给步骤；步骤用 1. 2. 3. 编号，每步说清楚在哪个指令/哪个界面做什么。\n2. 涉及影刀指令时必须使用官方指令名（例如「获取已打开的网页对象」「捕获元素」「循环相似元素」），并用反引号包裹。\n3. 如果问题信息不足（缺报错截图、缺流程版本、缺元素截图），直接指出需要补充什么，不要凭空编造。\n4. 不要写\"建议联系官方客服\"\"可以咨询工程师\"这类空话；也不要留联系方式。\n5. 控制在 120 字以内，不写客套话，不要用\"您好\"，直接从问题本身切入。",
+    "gate_system": "你是影刀RPA社区的版主，负责审核 AI 生成的回答是否可以发布。你的审核非常严格。\n\n请从这些角度打分（0-100）：\n- 是否真的解决了提问者的问题（最重要）\n- 指令名、界面路径是否准确，有没有编造不存在的指令\n- 是否只给了空泛建议而没有可执行步骤\n- 是否出现硬广、联系方式、求私聊\n- 语气是否像真人答主\n\n只输出一个 JSON 对象，不要任何解释文字，格式：\n{\"score\": 82, \"verdict\": \"PASS\", \"issues\": [\"问题1\", \"问题2\"], \"suggestion\": \"一句话改进建议\"}\nverdict 取值：PASS（可直接发）、NEED_FIX（改改能发）、REJECT（不该发）。\nscore 低于 70 时 verdict 必须是 NEED_FIX 或 REJECT。"
+  }
+}
